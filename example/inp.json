@@ -1,0 +1,14 @@
+{
+    "static-mol": "subs.gjf",
+    "scan-mol": "mol.gjf",
+    "from-point": [
+        [1.0, 1.0, 1.0],
+        [-1.0, -1.0, -1.0]
+    ],
+    "to-point": [1.0, 1.0, 1.0],
+    "even-mesh": [1.0, 10.0, 10],
+    "files": ["job.gjf"]
+}
+
+
+

@@ -94,7 +94,7 @@ def read_mol(file_name):
 
         atms = []
         for i in lines:
-            fields = lines.split()
+            fields = i.split()
             try:
                 atms.append(
                     (fields[0], ) + tuple(float(j) for j in fields[1:4])
@@ -111,11 +111,13 @@ def normalize(vec):
 
     """Normalizes a vector"""
 
+    vec_list = list(vec)
+
     norm = math.sqrt(
-        sum(i ** 2 for i in vec)
+        sum(i ** 2 for i in vec_list)
         )
 
-    return tuple(i / norm for i in vec)
+    return tuple(i / norm for i in vec_list)
 
 def centre(vecs):
 
@@ -157,7 +159,7 @@ def get_grid(inp):
         return inp['translations']
     elif 'even-mesh' in inp:
         mesh = inp['even-mesh']
-        diff = (mesh[1] - mesh[0]) / mesh[2]
+        diff = (mesh[1] - mesh[0]) / (mesh[2] - 1)
         return [
             mesh[0] + diff * i for i in xrange(0, mesh[2] + 1)
             ]
@@ -180,7 +182,7 @@ def transl_mol(mol, vec):
     for atm_i in mol:
         atms.append(
             (atm_i[0], ) + tuple(i + j
-                                 for i, j in itertools.izip(mol[1:4], vec))
+                                 for i, j in itertools.izip(atm_i[1:4], vec))
             )
         continue
 
@@ -227,7 +229,10 @@ def dump_sp(sp, file_names, dir_name):
 
     """
 
-    os.mkdir(dir_name)
+    try:
+        os.mkdir(dir_name)
+    except OSError:
+        pass
 
     atm_strs = [' %s   %f  %f  %f\n' % i for i in sp.coords]
     atm_strs[-1] = atm_strs[-1][0:-1]
