@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """A simple script for generating configurations in a PES scan
 
 The input file is going to be a simple JSON file specifying the configurations
