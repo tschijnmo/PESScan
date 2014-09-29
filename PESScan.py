@@ -165,7 +165,7 @@ def get_transl_vec(inp, static_mol, scan_mol):
         points = []
         for i in ['from-point', 'to-point']:
             raw_p = inp[i]
-            if isinstance(raw_p[0], list):
+            if isinstance(raw_p[0], list) or isinstance(raw_p[0], tuple):
                 points.append(
                     centre(raw_p)
                     )
