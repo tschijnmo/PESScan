@@ -19,10 +19,18 @@ scan-mol
 translation-vector
   The translation vector to translate the molecule to scan.
 
-from-point, to-pint
+from-point, to-point
   Alternative to the translation vector. The molecule are going to be translated
   by the vector from the point given to the other point. If more than one points
   are given in a list, the centre of them are going to be used for the point.
+
+from-atom, to-atom
+  Yet another alternative for giving the translation vector. Here the
+  coordinates are given as indices of the atoms in the molecules. The
+  ``from-atom`` is based on the static molecules, while to ``to-atom`` is based
+  on the scan molecule. It can be both a single integer or a list of integers.
+  When a list of given, the centre of the atoms are going to be used. The
+  indices are all one-based.
 
 translations
   A list of translations. Their product with the normalized translation vector
@@ -129,9 +137,26 @@ def centre(vecs):
         sum(i) / len(vecs) for i in itertools.izip(*vecs)
         )
 
-def get_transl_vec(inp):
+def get_transl_vec(inp, static_mol, scan_mol):
 
     """Gets the translational vector from the input data structure"""
+
+    # pre-process the input object to support the indices of the atoms in the
+    # molecules
+
+    def idx2coord(idxes, mol):
+        """Convert the indices to coordinates"""
+        if isinstance(idxes, list):
+            return [
+                mol[i - 1][1:4] for i in idxes
+                ]
+        else:
+            return mol[idxes - 1][1:4]
+    if 'from-atom' in inp:
+        inp['from-point'] = idx2coord(inp['from-atom'], static_mol)
+    if 'to-atom' in inp:
+        inp['to-point'] = idx2coord(inp['to-atom'], scan_mol)
+
 
     if 'translation-vector' in inp:
         raw_vec = inp['translation-vector']
@@ -221,7 +246,7 @@ def gen_sp(static_mol, scan_mol, transl_vec, dist):
 # ------------------------------------
 #
 
-def dump_sp(sp, file_names, dir_name):
+def dump_sp(sp, file_names, dir_name): # pylint: disable=invalid-name
 
     """Dumps a scan point into a directory
 
@@ -280,7 +305,7 @@ def main():
 
     static_mol = read_mol(inp['static-mol'])
     scan_mol = read_mol(inp['scan-mol'])
-    transl_vec = get_transl_vec(inp)
+    transl_vec = get_transl_vec(inp, static_mol, scan_mol)
     grid = get_grid(inp)
 
     sps = [gen_sp(static_mol, scan_mol, transl_vec, i) for i in grid]
@@ -288,7 +313,7 @@ def main():
     dir_names_len = len(str(len(sps) + 1))
     dir_format = '%%%d.%dd' % (dir_names_len, dir_names_len)
 
-    for i, v in enumerate(sps):
+    for i, v in enumerate(sps): # pylint: disable=invalid-name
         dir_name = dir_format % (i + 1)
         dump_sp(v, inp['files'], dir_name)
         continue
