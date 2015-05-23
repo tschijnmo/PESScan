@@ -286,12 +286,13 @@ def dump_sp(sp, orig_dist, file_names, dir_name):
         {
             'idx': i,
             'element': v[0],
-            'coords': v[1:3],
+            'coords': v[1:4],
         }
         for i, v in enumerate(sp.coords)
     ]
 
     env = jinja2.Environment(
+        keep_trailing_newline=True,
         loader=jinja2.FileSystemLoader(os.getcwd())
     )
 
