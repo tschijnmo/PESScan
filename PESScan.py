@@ -71,15 +71,17 @@ configured and copied into each of them.
 
 """
 
-import itertools
+
 import sys
-import json
-import string
 import math
 import collections
 import os
 from os import path
 import argparse
+
+import yaml
+import jinja2
+
 
 # pylint: disable=star-args
 
@@ -89,21 +91,20 @@ import argparse
 # ----------------
 #
 
-def get_input(file_name):
 
-    """Gets the data structure from the JSON input file"""
+def get_input(file_name):
+    """Gets the data structure from the YAML input file"""
 
     with open(file_name, 'r') as inp_file:
-        inp = json.load(inp_file)
+        inp = yaml.load(inp_file)
     return inp
 
-def read_mol(file_name):
 
+def read_mol(file_name):
     """Reads a list of atoms from a file with file name
 
     The atoms are going to be returned as a quadruple of element symbol and
     Cartesian coordinates
-
     """
 
     with open(file_name, 'r') as in_f:
@@ -119,15 +120,15 @@ def read_mol(file_name):
                     (fields[0], ) + tuple(float(j) for j in fields[1:4])
                     )
             except (IndexError, ValueError):
-                print 'Corrupt input line in file %s:' % file_name
-                print i
+                print('Corrupt input line in file {}:'.format(file_name))
+                print(i)
                 raise IOError()
             continue
 
         return atms
 
-def normalize(vec):
 
+def normalize(vec, return_norm=False):
     """Normalizes a vector"""
 
     vec_list = list(vec)
@@ -136,19 +137,25 @@ def normalize(vec):
         sum(i ** 2 for i in vec_list)
         )
 
-    return tuple(i / norm for i in vec_list)
+    normed_vec = tuple(i / norm for i in vec_list)
+
+    return (normed_vec, norm) if return_norm else normed_vec
+
 
 def centre(vecs):
-
     """Computes the centre of a list of points"""
 
     return tuple(
-        sum(i) / len(vecs) for i in itertools.izip(*vecs)
+        sum(i) / len(vecs) for i in zip(*vecs)
         )
 
-def get_transl_vec(inp, static_mol, scan_mol):
 
-    """Gets the translational vector from the input data structure"""
+def get_transl_vec(inp, static_mol, scan_mol):
+    """Gets the translational vector from the input data structure
+
+    Both the normalized translational vector and the original norm of the
+    vector are going to be returned.
+    """
 
     # pre-process the input object to support the indices of the atoms in the
     # molecules
@@ -166,7 +173,6 @@ def get_transl_vec(inp, static_mol, scan_mol):
     if 'to-atom' in inp:
         inp['to-point'] = idx2coord(inp['to-atom'], scan_mol)
 
-
     if 'translation-vector' in inp:
         raw_vec = inp['translation-vector']
         return normalize(raw_vec)
@@ -181,14 +187,15 @@ def get_transl_vec(inp, static_mol, scan_mol):
             else:
                 points.append(raw_p)
         return normalize(
-            j - i for i, j in itertools.izip(*points)
-            )
+            (j - i for i, j in zip(*points)),
+            return_norm=True
+        )
     else:
-        print "Translation vector is not given in the input!"
+        print("Translation vector is not given in the input!")
         raise IOError()
 
-def get_grid(inp):
 
+def get_grid(inp):
     """Gets the grid of data points to scan"""
 
     if 'translations' in inp:
@@ -197,14 +204,14 @@ def get_grid(inp):
         mesh = inp['even-mesh']
         diff = (mesh[1] - mesh[0]) / (mesh[2] - 1)
         return [
-            mesh[0] + diff * i for i in xrange(0, mesh[2] + 1)
+            mesh[0] + diff * i for i in range(0, mesh[2] + 1)
             ]
     else:
-        print 'Translation data point mesh is not given in the input!'
+        print('Translation data point mesh is not given in the input!')
         raise IOError()
 
 
-#
+#
 # Molecules translation
 # ---------------------
 #
@@ -217,8 +224,7 @@ def transl_mol(mol, vec):
 
     for atm_i in mol:
         atms.append(
-            (atm_i[0], ) + tuple(i + j
-                                 for i, j in itertools.izip(atm_i[1:4], vec))
+            (atm_i[0], ) + tuple(i + j for i, j in zip(atm_i[1:4], vec))
             )
         continue
 
@@ -239,8 +245,8 @@ ScanPoint = collections.namedtuple(
     ['coords', 'dist']
     )
 
-def gen_sp(static_mol, scan_mol, transl_vec, dist):
 
+def gen_sp(static_mol, scan_mol, transl_vec, dist):
     """Generates a scan point data structure"""
 
     vec = tuple(i * dist for i in transl_vec)
@@ -250,19 +256,18 @@ def gen_sp(static_mol, scan_mol, transl_vec, dist):
     return ScanPoint(coords=atms, dist=dist)
 
 
-#
+#
 # Dump a scan point to the file system
 # ------------------------------------
 #
 
-def dump_sp(sp, file_names, dir_name): # pylint: disable=invalid-name
-
+def dump_sp(sp, orig_dist, file_names, dir_name): # pylint: disable=invalid-name
     """Dumps a scan point into a directory
 
     :param sp: The scan point
+    :param orig_dist: The original distance between the from and to points.
     :param file_names: A list of file names to process
     :param dir_name: The directory name to dump the files
-
     """
 
     try:
@@ -270,37 +275,39 @@ def dump_sp(sp, file_names, dir_name): # pylint: disable=invalid-name
     except OSError:
         pass
 
-    atm_strs = [' %s   %f  %f  %f\n' % i for i in sp.coords]
-    atm_strs[-1] = atm_strs[-1][0:-1]
-    atm_str = ''.join(atm_strs)
+    atoms = [
+        {
+            'idx': i,
+            'element': v[0]
+            'coords': v[1:3]
+        }
+        for i, v in enumerate(sp.coords)
+    ]
 
-    dist_str = '%f' % sp.dist
-    sn_str = dir_name
+    env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(os.getcwd())
+    )
 
     for file_name_i in file_names:
-        with open(file_name_i, 'r') as file_i:
-
-            content = file_i.read()
-            template = string.Template(content)
-            res = template.substitute(
-                coords=atm_str,
-                dist=dist_str,
-                sn=sn_str
-                )
-
-            out_file_name = path.join(os.curdir, dir_name, file_name_i)
-            with open(out_file_name, 'w') as out_file:
-                out_file.write(res)
-
+        templ = env.get_template(file_name_i)
+        ctx = {
+            'atoms': atoms,
+            'translation': sp.dist,
+            'distance': orig_dist + sp.dist,
+            'sn': dir_name,
+        }
+        out_file_name = path.join(os.curdir, dir_name, file_name_i)
+        templ.stream(ctx).dump(out_file_name)
         continue
 
     return 0
 
 
-#
+#
 # Main driver
 # -----------
 #
+
 
 def main():
 
@@ -314,7 +321,7 @@ def main():
 
     static_mol = read_mol(inp['static-mol'])
     scan_mol = read_mol(inp['scan-mol'])
-    transl_vec = get_transl_vec(inp, static_mol, scan_mol)
+    transl_vec, orig_dist = get_transl_vec(inp, static_mol, scan_mol)
     grid = get_grid(inp)
 
     sps = [gen_sp(static_mol, scan_mol, transl_vec, i) for i in grid]
@@ -324,7 +331,7 @@ def main():
 
     for i, v in enumerate(sps): # pylint: disable=invalid-name
         dir_name = dir_format % (i + 1)
-        dump_sp(v, inp['files'], dir_name)
+        dump_sp(v, orig_dist, inp['files'], dir_name)
         continue
 
     return 0
