@@ -71,10 +71,8 @@ configured and copied into each of them.
 
 """
 
-
 import sys
 import math
-import collections
 import os
 from os import path
 import argparse
@@ -231,29 +229,37 @@ def transl_mol(mol, vec):
     return atms
 
 
-#
+#
 # Scan data structure
 # -------------------
 #
-# A scan point is going to be stored in a simple data structure having the atoms
-# coordinates in field ``coords`` and the translated distance in ``dist``. The
-# serial number is going to be read from its position in a list.
-#
 
-ScanPoint = collections.namedtuple(
-    'ScanPoint',
-    ['coords', 'dist']
-    )
+class ScanPoint:
+
+    """
+    Points for a PES scan
+
+    A scan point is going to be in a simple data structure having the atoms
+    coordinates in field ``coords`` and the translated distance in
+    ``transl_dist``. The serial number is going to be read from its position
+    in a list.
+
+    """
+
+    def __init__(self, coords, transl_dist):
+        """Initializes a data point"""
+        self.coords = coords
+        self.transl_dist = transl_dist
 
 
-def gen_sp(static_mol, scan_mol, transl_vec, dist):
+def gen_sp(static_mol, scan_mol, transl_vec, transl_dist):
     """Generates a scan point data structure"""
 
-    vec = tuple(i * dist for i in transl_vec)
+    vec = tuple(i * transl_dist for i in transl_vec)
     transled_scan_mol = transl_mol(scan_mol, vec)
     atms = static_mol + transled_scan_mol
 
-    return ScanPoint(coords=atms, dist=dist)
+    return ScanPoint(atms, transl_dist)
 
 
 #
@@ -261,7 +267,8 @@ def gen_sp(static_mol, scan_mol, transl_vec, dist):
 # ------------------------------------
 #
 
-def dump_sp(sp, orig_dist, file_names, dir_name): # pylint: disable=invalid-name
+
+def dump_sp(sp, orig_dist, file_names, dir_name):
     """Dumps a scan point into a directory
 
     :param sp: The scan point
@@ -278,8 +285,8 @@ def dump_sp(sp, orig_dist, file_names, dir_name): # pylint: disable=invalid-name
     atoms = [
         {
             'idx': i,
-            'element': v[0]
-            'coords': v[1:3]
+            'element': v[0],
+            'coords': v[1:3],
         }
         for i, v in enumerate(sp.coords)
     ]
@@ -292,8 +299,8 @@ def dump_sp(sp, orig_dist, file_names, dir_name): # pylint: disable=invalid-name
         templ = env.get_template(file_name_i)
         ctx = {
             'atoms': atoms,
-            'translation': sp.dist,
-            'distance': orig_dist + sp.dist,
+            'translation': sp.transl_dist,
+            'distance': orig_dist + sp.transl_dist,
             'sn': dir_name,
         }
         out_file_name = path.join(os.curdir, dir_name, file_name_i)
@@ -329,7 +336,7 @@ def main():
     dir_names_len = len(str(len(sps) + 1))
     dir_format = '%%%d.%dd' % (dir_names_len, dir_names_len)
 
-    for i, v in enumerate(sps): # pylint: disable=invalid-name
+    for i, v in enumerate(sps):
         dir_name = dir_format % (i + 1)
         dump_sp(v, orig_dist, inp['files'], dir_name)
         continue
