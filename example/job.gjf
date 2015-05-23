@@ -1,9 +1,8 @@
 # sp hf/sto-3g
 
-Point No. $sn, distance: $dist
+Point No. {{ sn }}, distance: {{ distance }}, translated by {{ translation }}
 
 0 1
-$coords
-
-Junk
-
+{% for atom in atoms -%}
+{{ atom.element }} {% for i in atom.coords %}{{ i }} {% endfor %}
+{% endfor %}
