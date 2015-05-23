@@ -1,16 +1,17 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """A simple script for generating configurations in a PES scan
 
-The input file is going to be a simple JSON file specifying the configurations
-that is needed for the program to run. The name of the JSON file should be given
-as a command line argument. Specifically, it needs to have the following fields:
+The input file is going to be a simple YAML file specifying the
+configurations that is needed for the program to run. The name of the YAML
+file should be given as a command line argument. Specifically, it needs to
+have the following fields:
 
 static-mol
-  The file name for the coordinate of the molecule that is placed static in the
-  PES scan. The format of the file should be a simple one of lines of element
-  symbol followed by the three Cartesian coordinates. All blank lines and lines
-  starting with the hash sign are going to be ignored.
+  The file name for the coordinate of the molecule that is placed static in
+  the PES scan. The format of the file should be a simple one of lines of
+  element symbol followed by the three Cartesian coordinates. All blank lines
+  and lines starting with the hash sign are going to be ignored.
 
 scan-mol
   The file name for the coordinate of the molecule that is to be moved in the
@@ -20,38 +21,46 @@ translation-vector
   The translation vector to translate the molecule to scan.
 
 from-point, to-point
-  Alternative to the translation vector. The molecule are going to be translated
-  by the vector from the point given to the other point. If more than one points
-  are given in a list, the centre of them are going to be used for the point.
+  Alternative to the translation vector. The molecule are going to be
+  translated by the vector from the point given to the other point. If more
+  than one points are given in a list, the centre of them are going to be
+  used for the point.
 
 from-atom, to-atom
   Yet another alternative for giving the translation vector. Here the
   coordinates are given as indices of the atoms in the molecules. The
-  ``from-atom`` is based on the static molecules, while to ``to-atom`` is based
-  on the scan molecule. It can be both a single integer or a list of integers.
-  When a list of given, the centre of the atoms are going to be used. The
-  indices are all one-based.
+  ``from-atom`` is based on the static molecules, while to ``to-atom`` is
+  based on the scan molecule. It can be both a single integer or a list of
+  integers. When a list of given, the centre of the atoms are going to be
+  used. The indices are all one-based.
 
 translations
-  A list of translations. Their product with the normalized translation vector
-  are going to be used for translating the molecule.
+  A list of translations. Their product with the normalized translation
+  vector are going to be used for translating the molecule.
 
 even-mesh
-  An alternative to the translation list, an even mesh of grid points are going
-  to be generated. It is given as three numbers, with the first two being the
-  initial and final distance to scan. The last number is going to be taken as
-  the number of grid points between the initial and the final.
+  An alternative to the translation list, an even mesh of grid points are
+  going to be generated. It is given as three numbers, with the first two
+  being the initial and final distance to scan. The last number is going to
+  be taken as the number of grid points between the initial and the final.
 
 files
+
   A list of file names that is going to be configured by the code. They are
-  going as python string template templates. The place holders that is supported
-  are
+  going to be names of Jinja templates in the current working directory. The
+  fields that are supported are
 
-  coords
-    The coordinates of the molecules.
+  atoms
 
-  dist
+      The atoms in the molecules, given as a dictionary with keys ``element``
+      for the element and ``coords`` for the Cartesian coordinates. Also
+      ``idx`` is given for the index of the atom in the list of all atoms.
+
+  translation
     The distance that is translated
+
+  distance
+    The distance between the from and to points after the translation.
 
   sn
     A one-based serial number for the data point
